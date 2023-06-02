@@ -1,0 +1,108 @@
+---
+title: "presentacion resultados"
+author: "Jorge Valente Hernandez Castelan"
+format: 
+  revealjs:
+    fontsize: 20pt
+editor: visual
+---
+
+## Sobre los datos generales
+
+A partir de un primer vistazo al tablero se puede visualizar fácilmente que desde 1953 se han realizado un total de 5086 producciones, de las cuales el promedio de calificación es de 6.5. El principal país donde se realizan cintas es EEUU, lo que puede verse sencillamente en el mapa:
+
+```{r}
+
+library(dplyr)
+library(mapboxer)
+
+isocodes <- vroom::vroom("https://gist.githubusercontent.com/tadast/8827699/raw/f5cac3d42d16b78348610fc4ec301e9234f82821/countries_codes_and_coordinates.csv")
+data_netflix <- vroom::vroom("data/data_netflix.csv")
+
+data_netflix <- data_netflix |>
+  mutate(genres = stringr::str_replace_all(genres, "\\[|\\]|'", ""),
+         production_countries = stringr::str_replace_all(production_countries, "\\[|\\]|'", ""),
+         date = lubridate::make_date(release_year, 1,1)) |>
+  tidyr::separate(genres, into = c("Genero"), sep = ", ") |>
+  tidyr::separate(production_countries, into = c("Principal country"), sep = ", ")
+
+
+data_netflix |>
+      group_by(`Principal country`) |>
+      summarise(
+        producciones = n()
+      ) |>
+      mutate(producciones = producciones/sum(producciones)*80) |>
+      filter(`Principal country` != "") |>
+      left_join(isocodes |>
+                  rename(
+                    lat = `Latitude (average)`,
+                    lng = `Longitude (average)`
+                  ) |>
+                  select(`Alpha-2 code`, lat, lng),
+                by = c("Principal country" = "Alpha-2 code")) |>
+      as_mapbox_source() |>
+      mapboxer(
+        style = "mapbox://styles/mapbox/light-v10",
+        token = "pk.eyJ1IjoiYWFyb242NjYiLCJhIjoiY2o2M2NmZmJ4MWc0ZDJxbnI3dmZ5OXB2MSJ9.T3trJ5Tu66Kw-w-1ELpzBA"
+      ) |>
+      set_view_state( -105.133208, 21.4326077, 1,pitch = 20) |>
+      add_circle_layer(
+        circle_opacity = 0.4,
+        circle_color = "red",
+        circle_radius = c("get", "producciones")
+      )
+```
+
+## El género *western*, ¿infravalorado?
+
+Algo interesante a destacar es el hecho de que el género *western* tiene muy pocas producciones pero una gran cantidad de votos en ellas, como se puede ver en el gráfico a continuación. Esta es claramente una oportunidad para incursionar en este género, al ser de un claro interés para los televidentes.
+
+```{r}
+library(echarts4r)
+
+data_netflix |> 
+  group_by(Genero) |>
+      summarise(
+        `Shows totales` = n(),
+        `Votos promedio` = mean(imdb_votes, na.rm = T)
+      ) |>
+      filter(Genero != "" & is.na(Genero) == F) |>
+      arrange(desc(`Shows totales`)) |>
+      e_charts(Genero, dispose = F) |>
+      e_bar(`Shows totales`) |>
+      e_bar(`Votos promedio`, y_index = 1) |>
+      e_tooltip(trigger = "axis") |>
+      e_theme("auritus")
+```
+
+
+
+## Un mercado saturado de *dramas*
+
+La mayor cantidad de calificaciones se concentra en dramas, esto debido a la saturación de productos de este estilo en el mercado, lo que puede verse en la siguiente gráfica. Un giro en el género de producción hacia uno menos explotado puede reavivar el interés del público de manera considerable.
+
+```{r}
+data_netflix |> 
+  mutate(date = lubridate::make_date(year = release_year, 1,1)) |> 
+  group_by(date) |> 
+  summarise(western = sum(Genero == "western", na.rm = T),
+            drama = sum(Genero == "drama", na.rm = T)) |> 
+  e_charts(date) |>  
+  e_line(drama, symbol = "none") |> 
+  e_line(western, symbol = "none") |> 
+  e_tooltip(trigger = "axis", confine = T) |>
+  e_theme("auritus") |> 
+  e_legend(right = 1, orient = "vertical") |> 
+  e_title("Saturacion del mercado por género", left = "center")
+```
+
+
+
+
+
+
+
+
+
+
