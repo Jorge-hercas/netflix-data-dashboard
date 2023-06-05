@@ -4,6 +4,7 @@ Tablero para visualizar información estadística.
 El siguiente tablero tuvo como objetivo principal el obtener información gráfica y estadística de los principales shows en Netflix, así como su calificación y número de votos, lo que nos da una mayor aproximación a los intereses del mercado en cuanto a entretenimiento.
 
 Link al dashoard: https://jorgehcas1998.shinyapps.io/pruebatecnica/
+
 Link a la presentación: https://bookdown.org/eljorgehdz/resultados/
 
 ## Acceder al tablero
